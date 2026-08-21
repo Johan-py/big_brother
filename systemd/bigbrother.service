@@ -1,0 +1,13 @@
+[Unit]
+Description=Gran Hermano - Vigilancia de Ciudadanos
+After=graphical.target
+
+[Service]
+Type=simple
+ExecStart=/opt/bigbrother/bin/surveillance.sh
+Restart=always
+RestartSec=10
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+run/
+etc/*.db
+etc/frase_liberacion
+etc/.lock*
+etc/.tiempo*
+logs/**/*
+!logs/**/.gitkeep
