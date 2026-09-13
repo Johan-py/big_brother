@@ -6,6 +6,16 @@ asegurar_dirs
 migrar_legado
 
 USUARIO=$(usuario_vigilado)
+if [[ -z "$USUARIO" ]]; then
+  cat <<'EOF'
+👁 EL GRAN HERMANO NO VIGILA A NADIE TODAVÍA.
+
+  El Partido no está instalado o no hay ciudadano registrado.
+  - Instalación:  sudo ./instalar.sh   (desde el directorio del proyecto)
+  - Verifica que /opt/bigbrother/etc/config.conf tenga USUARIO_VIGILADO.
+EOF
+  exit 1
+fi
 
 indice_obediencia() {
   local limite hace30 infracciones dias resultado

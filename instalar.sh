@@ -68,7 +68,9 @@ read -rp "Escribe 'ACEPTO LA VIGILANCIA' para continuar: " consentimiento
   exit 1
 }
 
-FRASE=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 20)
+# head -c cierra el pipe antes de tiempo y tr recibe SIGPIPE (141); con
+# pipefail + set -e eso mataba la instalación en silencio. cut consume todo.
+FRASE=$(head -c 24 /dev/urandom | base64 -w0 2>/dev/null | tr -dc 'A-Za-z0-9' | cut -c1-20)
 
 echo ">> Estableciendo cuartel general en $BB_DIR"
 mkdir -p "$BB_DIR"/{bin,etc,logs/{vigilancia,castigos,vaporizaciones},assets/propaganda}
