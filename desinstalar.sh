@@ -45,6 +45,7 @@ liberar() {
   rm -f /etc/profile.d/bigbrother-motd.sh
   rm -f "$BIN_LINK"
   rm -f /etc/systemd/system/bigbrother.service /etc/systemd/system/bigbrother-propaganda.service
+  rm -rf /run/bigbrother
 
   if [[ -n "$USUARIO" ]]; then
     pkill -u "$USUARIO" -f "feh -F" 2>/dev/null || true

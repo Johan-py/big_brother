@@ -75,8 +75,8 @@ FRASE=$(head -c 24 /dev/urandom | base64 -w0 2>/dev/null | tr -dc 'A-Za-z0-9' | 
 echo ">> Estableciendo cuartel general en $BB_DIR"
 mkdir -p "$BB_DIR"/{bin,etc,logs/{vigilancia,castigos,vaporizaciones},assets/propaganda}
 cp "$REPO_DIR"/bin/*.sh "$BB_DIR/bin/"
-chmod 750 "$BB_DIR/bin/"*.sh
-chmod 750 "$BB_DIR/etc" 2>/dev/null || true
+chmod 755 "$BB_DIR/bin/"*.sh
+chmod 755 "$BB_DIR/etc" 2>/dev/null || true
 
 cat > "$BB_DIR/etc/config.conf" <<EOF
 USUARIO_VIGILADO=$USUARIO_OBJETIVO
@@ -110,7 +110,8 @@ WINE_N3_DUR_S=1200
 YOUTUBE_N3_DUR_S=1200
 SUDO_N3_DUR_S=900
 EOF
-chmod 640 "$BB_DIR/etc/config.conf"
+# El ciudadano puede leer su expediente y ejecutar la CLI; solo root escribe.
+chmod 644 "$BB_DIR/etc/config.conf"
 echo "$FRASE" > "$BB_DIR/etc/frase_liberacion"
 chmod 600 "$BB_DIR/etc/frase_liberacion"
 
@@ -122,9 +123,10 @@ db "INSERT INTO usuarios (usuario,nivel,alta,consentimiento) VALUES ('$(sql_esc 
 log_evento "CONSENTIMIENTO" "usuario=$USUARIO_OBJETIVO instalacion=v3.0"
 
 chown -R root:root "$BB_DIR"
-chmod 750 "$BB_DIR/etc" "$BB_DIR/logs"
+chmod 755 "$BB_DIR/bin" "$BB_DIR/etc"
+chmod 750 "$BB_DIR/logs"
 find "$BB_DIR/logs" -type d -exec chmod 750 {} +
-chmod 640 "$BB_DIR/etc/estado.db"
+chmod 644 "$BB_DIR/etc/config.conf" "$BB_DIR/etc/estado.db"
 
 echo ">> Generando efigies del Partido"
 if command -v convert >/dev/null 2>&1; then
@@ -146,6 +148,7 @@ if [[ ! -s "$BB_DIR/assets/gran_hermano.png" ]]; then
 fi
 
 echo ">> Instalando servicios del Partido"
+rm -rf /run/bigbrother
 cp "$REPO_DIR/systemd/bigbrother.service" /etc/systemd/system/
 cp "$REPO_DIR/systemd/bigbrother-propaganda.service" /etc/systemd/system/
 systemctl daemon-reload

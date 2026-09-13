@@ -2,8 +2,20 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-asegurar_dirs
-migrar_legado
+if [[ $EUID -eq 0 ]]; then
+  asegurar_dirs
+  migrar_legado
+elif [[ ! -r "$DB" ]]; then
+  cat <<'EOF'
+👁 PERMISO DENEGADO POR EL PARTIDO.
+
+  El expediente no es legible todavía o no hay ciudadano registrado.
+  - Espera a que la vigilancia arranque una vez, o
+  - ejecuta el comando con sudo (supervisión), o
+  - reinstala:  sudo ./instalar.sh
+EOF
+  exit 1
+fi
 
 USUARIO=$(usuario_vigilado)
 if [[ -z "$USUARIO" ]]; then
@@ -106,6 +118,10 @@ case "${1:-}" in
     informe_diario "$@"
     ;;
   arrepentimiento)
+    if [[ $EUID -ne 0 ]]; then
+      echo "El arrepentimiento requiere autoridad suprema: sudo bigbrother arrepentimiento"
+      exit 1
+    fi
     solicitar_arrepentimiento
     ;;
   propaganda)

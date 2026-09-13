@@ -255,15 +255,21 @@ vigilar() {
 
 log_evento "ARRANQUE_VIGILANCIA" "Vigilancia iniciada sobre $USUARIO"
 
-for _ in $(seq 1 120); do
-  if sesion_grafica "$USUARIO" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 5
-done
-
 notify_user "$USUARIO" "👁 GRAN HERMANO TE OBSERVA" \
   "La vigilancia ha comenzado, ciudadano $USUARIO. Tu obediencia es registrada." || true
+
+# El saludo se reintenta sin bloquear la vigilancia: apenas exista sesión.
+(
+  for _ in $(seq 1 60); do
+    if sesion_grafica "$USUARIO" >/dev/null 2>&1; then
+      notify_user "$USUARIO" "👁 GRAN HERMANO TE OBSERVA" \
+        "La vigilancia ha comenzado, ciudadano $USUARIO. Tu obediencia es registrada." || true
+      break
+    fi
+    sleep 5
+  done
+) &
+disown
 
 while true; do
   vigilar || true

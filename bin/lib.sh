@@ -6,11 +6,15 @@ BIN_DIR="$BB_DIR/bin"
 ETC_DIR="$BB_DIR/etc"
 LOGS_DIR="$BB_DIR/logs"
 ASSETS_DIR="$BB_DIR/assets"
-if mkdir -p /run/bigbrother 2>/dev/null; then
-  RUN_DIR="/run/bigbrother"
-else
-  RUN_DIR="$BB_DIR/run"
-fi
+# Elige un dir de estado escribible: /run/bigbrother si se puede, si no, local.
+RUN_DIR=""
+for d in "/run/bigbrother" "$BB_DIR/run"; do
+  if mkdir -p "$d" 2>/dev/null && [[ -w "$d" ]]; then
+    RUN_DIR="$d"
+    break
+  fi
+done
+RUN_DIR="${RUN_DIR:-$BB_DIR/run}"
 mkdir -p "$RUN_DIR" 2>/dev/null || true
 
 CONFIG="$ETC_DIR/config.conf"
@@ -116,10 +120,12 @@ SQL
 }
 
 asegurar_dirs() {
-  mkdir -p "$RUN_DIR" "$LOGS_DIR/vigilancia" "$LOGS_DIR/castigos" "$LOGS_DIR/vaporizaciones" "$ASSETS_DIR/propaganda"
-  touch "$FRASE_FILE" 2>/dev/null
+  mkdir -p "$RUN_DIR" "$LOGS_DIR/vigilancia" "$LOGS_DIR/castigos" "$LOGS_DIR/vaporizaciones" "$ASSETS_DIR/propaganda" 2>/dev/null || true
+  touch "$FRASE_FILE" 2>/dev/null || true
   chmod 600 "$FRASE_FILE" 2>/dev/null || true
-  db_init
+  if [[ -w "$ETC_DIR" ]]; then
+    db_init
+  fi
 }
 
 migrar_legado() {
@@ -310,6 +316,10 @@ run_as_user() {
 
 notify_user() {
   local usuario="$1" titulo="$2" mensaje="$3" urgencia="${4:-critical}"
+  if [[ $EUID -ne 0 ]]; then
+    notify-send -u "$urgencia" -t 10000 "$titulo" "$mensaje" 2>/dev/null || true
+    return 0
+  fi
   run_as_user "$usuario" notify-send -u "$urgencia" -t 10000 "$titulo" "$mensaje" || true
 }
 
