@@ -6,6 +6,7 @@ MOTIVO="${2:-infraccion_grave}"
 DETALLE="${3:-}"
 
 USUARIO=$(usuario_vigilado)
+asegurar_dirs
 
 duracion_base() {
   local r=$(( RANDOM % 100 ))
@@ -28,10 +29,9 @@ calcular_modificadores() {
   local mult=100
   local hoy_epoch=$(date +%s)
   local limite_reincidencia=$(( hoy_epoch - 30*86400 ))
-
-  if [[ -f "$EXILIO_DB" ]] && awk -F'|' -v l="$limite_reincidencia" '$1 >= l {encontrado=1} END{exit !encontrado}' "$EXILIO_DB"; then
-    mult=$(( mult + 20 ))
-  fi
+  local total
+  total=$(db "SELECT COUNT(*) FROM exilio WHERE inicio >= $limite_reincidencia;" 2>/dev/null || echo 0)
+  (( total > 0 )) && mult=$(( mult + 20 ))
 
   if [[ "$DETALLE" == *"sudo"* ]]; then
     mult=$(( mult + 30 ))
@@ -47,26 +47,26 @@ calcular_modificadores() {
 aplicar_exilio() {
   read -r min max etiqueta <<< "$(duracion_base)"
   local horas=$(( min + RANDOM % (max - min + 1) ))
-  local mult
+  local mult mult_base maxima
   mult=$(calcular_modificadores)
-  horas=$(( (horas * mult + 50) / 100 ))
+  mult_base=$(cfg_num EXILIO_MULT 150)
+  maxima=$(cfg_num EXILIO_MAX_H 96)
+  horas=$(( (horas * mult_base * mult / 100 + 50) / 100 ))
   (( horas < 6 )) && horas=6
+  (( horas > maxima )) && horas=$maxima
 
   local inicio fin dur_seg
   inicio=$(date +%s)
   dur_seg=$(( horas * 3600 ))
   fin=$(( inicio + dur_seg ))
 
-  (
-    flock -x 9
-    echo "$inicio|$fin|$MOTIVO|${horas}h|$etiqueta|mult=$mult%" >> "$EXILIO_DB"
-  ) 9>"$ETC_DIR/.lock.exilio"
+  db "INSERT INTO exilio (inicio,fin,motivo,duracion,etiqueta,mult) VALUES ($inicio,$fin,'$(sql_esc "$MOTIVO")','${horas}h','$(sql_esc "$etiqueta")','base=${mult_base}%+mod=${mult}%');" 2>/dev/null || true
 
   {
     echo "=== VAPORIZACIÓN $(date '+%Y-%m-%d %H:%M:%S') ==="
     echo "CIUDADANO: $USUARIO"
     echo "MOTIVO: $MOTIVO ($DETALLE)"
-    echo "DURACIÓN: ${horas}h ($etiqueta, modificador $mult%)"
+    echo "DURACIÓN: ${horas}h ($etiqueta, base ${mult_base}% + modificadores ${mult}%)"
     echo "RETORNO: $(date -d "@$fin" '+%Y-%m-%d %H:%M:%S')"
     echo
   } >> "$LOGS_DIR/vaporizaciones/registro.log"
@@ -88,10 +88,9 @@ aplicar_exilio() {
 }
 
 verificar_retorno() {
-  if [[ ! -f "$EXILIO_DB" ]]; then
-    return 1
-  fi
-  local ultima_fin
+  local total ultima_fin
+  total=$(db "SELECT COUNT(*) FROM exilio;" 2>/dev/null || echo 0)
+  (( total > 0 )) || return 1
   ultima_fin=$(exilio_fin || true)
   [[ -n "$ultima_fin" ]] || return 1
   if (( $(date +%s) >= ultima_fin )); then

@@ -18,6 +18,13 @@ tipo_sesion() {
   fi
 }
 
+cerrar_overlay_activo() {
+  pkill -u "$USUARIO" -f 'feh -F' 2>/dev/null || true
+  pkill -u "$USUARIO" -f 'swayimg' 2>/dev/null || true
+  pkill -u "$USUARIO" -f 'imv' 2>/dev/null || true
+  rm -f "$OVERLAY_PIDFILE"
+}
+
 mostrar_overlay() {
   local imagen="$1" duracion="$2"
   local tipo
@@ -26,17 +33,15 @@ mostrar_overlay() {
     x11)
       (
         run_as_user "$USUARIO" feh -F -Z -Y "$imagen" &
-        echo $! > "$OVERLAY_PIDFILE"
         sleep "$duracion"
-        kill "$(cat "$OVERLAY_PIDFILE")" 2>/dev/null || true
-        rm -f "$OVERLAY_PIDFILE"
+        cerrar_overlay_activo
       ) &
       ;;
     wayland)
       if command -v swayimg >/dev/null 2>&1; then
-        ( run_as_user "$USUARIO" swayimg -f -N "$imagen" & sleep "$duracion"; pkill -u "$USUARIO" -f swayimg || true ) &
+        ( run_as_user "$USUARIO" swayimg -f -N "$imagen" & sleep "$duracion"; cerrar_overlay_activo ) &
       elif command -v imv >/dev/null 2>&1; then
-        ( run_as_user "$USUARIO" imv "$imagen" & sleep "$duracion"; pkill -u "$USUARIO" -f "imv" || true ) &
+        ( run_as_user "$USUARIO" imv "$imagen" & sleep "$duracion"; cerrar_overlay_activo ) &
       else
         :
       fi
@@ -75,16 +80,12 @@ desbloquear_entrada() {
 }
 
 cerrar_overlays() {
-  if [[ -f "$OVERLAY_PIDFILE" ]]; then
-    kill "$(cat "$OVERLAY_PIDFILE")" 2>/dev/null || true
-    rm -f "$OVERLAY_PIDFILE"
-  fi
-  pkill -u "$USUARIO" -f "feh -F" 2>/dev/null || true
+  cerrar_overlay_activo
   desbloquear_entrada
 }
 
 castigo_nivel1() {
-  local dur=$(( 3 + RANDOM % 3 ))
+  local dur=$(( 5 + RANDOM % 4 ))
   notify_user "$USUARIO" "⚠ ADVERTENCIA DEL GRAN HERMANO" \
     "El Gran Hermano ha notado tu transgresión: $MOTIVO. Corrige tu conducta."
   mostrar_overlay "$ASSETS_DIR/gran_hermano.png" "$dur"
@@ -92,22 +93,22 @@ castigo_nivel1() {
 }
 
 castigo_nivel2() {
-  local dur=$(( 5 + RANDOM % 4 ))
+  local dur=$(( 8 + RANDOM % 4 ))
   notify_user "$USUARIO" "👁 LA VISITA DE O'BRIEN" \
     "Tu pensamiento criminal ha sido registrado. Motivo: $MOTIVO."
   mostrar_overlay "$ASSETS_DIR/obrien.png" "$dur"
   log_castigo 2 "$MOTIVO" "$DETALLE (overlay ${dur}s)"
   (
-    sleep 90
+    sleep 60
     notificar_slogan "$USUARIO"
-    sleep 120
+    sleep 90
     notify_user "$USUARIO" "👁 O'BRIEN" "Seguiremos observando. Siempre."
   ) &
   disown
 }
 
 castigo_nivel3() {
-  local duracion="${5:-300}"
+  local duracion="${5:-900}"
   notify_user "$USUARIO" "👁 LA OMNIPRESENCIA" \
     "La resistencia es inútil. Ríndete. Sesión suspendida por ${duracion}s."
   log_castigo 3 "$MOTIVO" "$DETALLE (omnipresencia ${duracion}s)"

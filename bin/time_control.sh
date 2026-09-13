@@ -2,36 +2,26 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-TIEMPO_HOY="$ETC_DIR/.tiempo.$(hoy)"
+DIAS_LIMITE=400
 
 campo_actual() {
-  local campo="$1"
-  grep "^${campo}=" "$TIEMPO_HOY" 2>/dev/null | cut -d= -f2 || echo 0
+  local campo="$1" dia="${2:-$(hoy)}"
+  dbq "SELECT IFNULL((SELECT segundos FROM tiempo WHERE pk='${campo}:${dia}'),0);" 2>/dev/null || echo 0
 }
 
 sumar_segundos() {
-  local campo="$1" segundos="$2"
-  (
-    flock -x 9
-    local actual nuevo
-    actual=$(grep "^${campo}=" "$TIEMPO_HOY" 2>/dev/null | cut -d= -f2 || true)
-    actual=${actual:-0}
-    nuevo=$(( actual + segundos ))
-    if grep -q "^${campo}=" "$TIEMPO_HOY" 2>/dev/null; then
-      sed -i "s/^${campo}=.*$/${campo}=${nuevo}/" "$TIEMPO_HOY"
-    else
-      echo "${campo}=${nuevo}" >> "$TIEMPO_HOY"
-    fi
-  ) 9>"$ETC_DIR/.lock.tiempo"
+  local campo="$1" segundos="$2" dia
+  dia=$(hoy)
+  db "INSERT INTO tiempo (pk,dia,segundos) VALUES ('${campo}:${dia}','$(sql_esc "$dia")',$segundos)
+      ON CONFLICT(pk) DO UPDATE SET segundos = segundos + excluded.segundos;" 2>/dev/null || true
 }
 
 obtener_campo() {
-  local campo="$1"
-  campo_actual "$campo"
+  campo_actual "$1"
 }
 
 limpiar_dias_anteriores() {
-  find "$ETC_DIR" -name ".tiempo.*" -type f ! -name ".tiempo.$(hoy)" -delete 2>/dev/null || true
+  db "DELETE FROM tiempo WHERE dia != '$(hoy)';" 2>/dev/null || true
 }
 
 segundos_sesion() { obtener_campo "SESION"; }
@@ -39,10 +29,10 @@ segundos_youtube() { obtener_campo "YOUTUBE"; }
 segundos_wine() { obtener_campo "WINE"; }
 
 exceso_minutos() {
-  local sesion limite extra total
+  local sesion limite total
   sesion=$(segundos_sesion)
-  limite=$(( $(cfg LIMITE_DIARIO_MIN 180) * 60 ))
-  extra=$(( $(cfg TIEMPO_EXTRA_MIN 60) * 60 ))
+  limite=$(( $(cfg_num LIMITE_DIARIO_MIN 180) * 60 ))
+  extra=$(( $(cfg_num TIEMPO_EXTRA_MIN 60) * 60 ))
   total=$(( limite + extra ))
   echo $(( (sesion - limite) / 60 ))
 }
@@ -50,12 +40,12 @@ exceso_minutos() {
 estado_presupuesto() {
   local sesion limite
   sesion=$(segundos_sesion)
-  limite=$(( $(cfg LIMITE_DIARIO_MIN 180) * 60 ))
+  limite=$(( $(cfg_num LIMITE_DIARIO_MIN 180) * 60 ))
   if (( sesion < limite )); then
     echo "DENTRO_DE_LIMITE"
   else
     local exceso=$(( sesion - limite ))
-    local extra=$(( $(cfg TIEMPO_EXTRA_MIN 60) * 60 ))
+    local extra=$(( $(cfg_num TIEMPO_EXTRA_MIN 60) * 60 ))
     if (( exceso <= extra )); then
       echo "EN_TIEMPO_EXTRA"
     else

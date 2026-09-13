@@ -3,5 +3,8 @@ etc/*.db
 etc/frase_liberacion
 etc/.lock*
 etc/.tiempo*
+etc/issue.original
+etc/*-wal
+etc/*-shm
 logs/**/*
 !logs/**/.gitkeep

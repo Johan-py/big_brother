@@ -1,7 +1,52 @@
+# Gran Hermano v3.0 - configuración (nivel: ESTRICTO)
+# El cupo diario de sesión es sagrado (180 min + 60 extra).
+
+# ---- Cupo diario (NO TOCAR) ----
 LIMITE_DIARIO_MIN=180
 TIEMPO_EXTRA_MIN=60
-YOUTUBE_LIMITE_MIN=30
-PESO_YOUTUBE_SEG=60
-REFLEXION_HORAS=24
-PROPAGANDA_INTERVALO_MIN=7
+
+# ---- Escalada por tiempo de sesión (min de exceso) ----
+TIEMPO_ADV_MIN=3
+TIEMPO_N1_MIN=6
+TIEMPO_N2_MIN=12
+TIEMPO_N3_MIN=18
+
+# ---- Wine (software subversivo, min acumulados) ----
+WINE_ADV_MIN=1
+WINE_N2_MIN=2
+WINE_N3_MIN=5
+WINE_N4_MIN=9
+
+# ---- YouTube (propaganda enemiga, min acumulados) ----
+YOUTUBE_ADV_MIN=6
+YOUTUBE_N1_MIN=10
+YOUTUBE_N2_MIN=14
+YOUTUBE_N3_MIN=20
+# Peso en segundos que suma cada visita al historial
+PESO_YOUTUBE_SEG=90
+
+# ---- Cooldowns entre castigos (segundos) ----
+COOLDOWN_ADV_S=180
+COOLDOWN_N1_S=240
+COOLDOWN_N2_S=360
+COOLDOWN_N3_S=600
+COOLDOWN_N4_S=3600
+
+# ---- Duración del castigo N3 (segundos) ----
+TIEMPO_N3_DUR_S=1800
+WINE_N3_DUR_S=1200
+YOUTUBE_N3_DUR_S=1200
+SUDO_N3_DUR_S=900
+
+# ---- Vaporización / exilio ----
 VAPORIZACION_HABILITADA=1
+# Multiplicador de duración del exilio (100 = normal, 150 = +50%)
+EXILIO_MULT=150
+# Tope máximo del exilio en horas
+EXILIO_MAX_H=96
+
+# ---- Protocolo de salida (contrato, intacto) ----
+REFLEXION_HORAS=24
+
+# ---- Propaganda ----
+PROPAGANDA_INTERVALO_MIN=5

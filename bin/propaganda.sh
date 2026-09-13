@@ -5,7 +5,11 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 USUARIO=$(usuario_vigilado)
 [[ -n "$USUARIO" ]] || exit 1
 
-INTERVALO_BASE=$(cfg PROPAGANDA_INTERVALO_MIN 7)
+asegurar_dirs
+migrar_legado
+validar_config
+
+INTERVALO_BASE=$(cfg_num PROPAGANDA_INTERVALO_MIN 5)
 
 EVENTOS_ESPECIALES=(
   "HOY ES EL DÍA DE LA OBEDIENCIA. CELEBRA TRABAJANDO."

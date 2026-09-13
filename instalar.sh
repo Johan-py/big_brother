@@ -3,12 +3,13 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_DIR="/opt/bigbrother"
+BIN_LINK="/usr/local/bin/bigbrother"
 
 [[ $EUID -eq 0 ]] || { echo "El instalador requiere root: sudo ./instalar.sh"; exit 1; }
 
 cat <<'EOF'
 ╔════════════════════════════════════════════════════════════╗
-║           GRAN HERMANO v2.0 — CONSENTIMIENTO INFORMADO     ║
+║           GRAN HERMANO v3.0 — CONSENTIMIENTO INFORMADO     ║
 ╚════════════════════════════════════════════════════════════╝
 
 ANTES DE CONTINUAR, LEE ESTO COMPLETO. Es un contrato contigo mismo.
@@ -21,10 +22,10 @@ QUÉ HARÁ ESTE SISTEMA:
      - Todos los comandos ejecutados con sudo (vía journal del sistema).
   2. CASTIGOS AUTOMÁTICOS según tu configuración:
      - Advertencias y notificaciones propagandísticas.
-     - Overlays a pantalla completa con imágenes del Partido (3s-15min).
-     - Bloqueo temporal de teclado/ratón (solo X11, máx. 15 min).
+     - Overlays a pantalla completa con imágenes del Partido (3s-30min).
+     - Bloqueo temporal de teclado/ratón (solo X11, máx. 30 min).
      - Bloqueo de sesión.
-     - VAPORIZACIÓN: apagado programado del equipo durante 6-72 horas
+     - VAPORIZACIÓN: apagado programado del equipo durante 6-96 horas
        (duración aleatoria ponderada), con despertar automático por RTC.
   3. PROPAGANDA constante mediante notificaciones.
 
@@ -35,7 +36,7 @@ LÍMITES ÉTICOS DEL SISTEMA (garantizados por diseño):
   - La salida SIEMPRE está disponible (ver abajo).
 
 PROTOCOLO DE SALIDA (siempre disponible):
-  Oficial:    sudo /opt/bigbrother/bin/bigbrother.sh arrepentimiento
+  Oficial:    sudo /usr/local/bin/bigbrother arrepentimiento
               → período de reflexión obligatorio + frase de liberación
               → desinstalación limpia y completa.
   Emergencia: sudo /opt/bigbrother/desinstalar.sh emergencia
@@ -73,24 +74,55 @@ echo ">> Estableciendo cuartel general en $BB_DIR"
 mkdir -p "$BB_DIR"/{bin,etc,logs/{vigilancia,castigos,vaporizaciones},assets/propaganda}
 cp "$REPO_DIR"/bin/*.sh "$BB_DIR/bin/"
 chmod 750 "$BB_DIR/bin/"*.sh
-
-touch "$BB_DIR/etc"/{registros.db,tiempo.db,castigos.db,exilio.db,salida.db}
-echo "$USUARIO_OBJETIVO|1|$(date +%s)|consentimiento_expreso" > "$BB_DIR/etc/usuarios.db"
+chmod 750 "$BB_DIR/etc" 2>/dev/null || true
 
 cat > "$BB_DIR/etc/config.conf" <<EOF
 USUARIO_VIGILADO=$USUARIO_OBJETIVO
 LIMITE_DIARIO_MIN=180
 TIEMPO_EXTRA_MIN=60
-YOUTUBE_LIMITE_MIN=30
-PESO_YOUTUBE_SEG=60
+YOUTUBE_ADV_MIN=6
+YOUTUBE_N1_MIN=10
+YOUTUBE_N2_MIN=14
+YOUTUBE_N3_MIN=20
+PESO_YOUTUBE_SEG=90
 REFLEXION_HORAS=24
-PROPAGANDA_INTERVALO_MIN=7
+PROPAGANDA_INTERVALO_MIN=5
 VAPORIZACION_HABILITADA=1
+EXILIO_MULT=150
+EXILIO_MAX_H=96
+TIEMPO_ADV_MIN=3
+TIEMPO_N1_MIN=6
+TIEMPO_N2_MIN=12
+TIEMPO_N3_MIN=18
+WINE_ADV_MIN=1
+WINE_N2_MIN=2
+WINE_N3_MIN=5
+WINE_N4_MIN=9
+COOLDOWN_ADV_S=180
+COOLDOWN_N1_S=240
+COOLDOWN_N2_S=360
+COOLDOWN_N3_S=600
+COOLDOWN_N4_S=3600
+TIEMPO_N3_DUR_S=1800
+WINE_N3_DUR_S=1200
+YOUTUBE_N3_DUR_S=1200
+SUDO_N3_DUR_S=900
 EOF
 chmod 640 "$BB_DIR/etc/config.conf"
 echo "$FRASE" > "$BB_DIR/etc/frase_liberacion"
 chmod 600 "$BB_DIR/etc/frase_liberacion"
+
+echo ">> Inicializando bases de datos del Partido"
+source "$BB_DIR/bin/lib.sh"
+asegurar_dirs
+db_init
+db "INSERT INTO usuarios (usuario,nivel,alta,consentimiento) VALUES ('$(sql_esc "$USUARIO_OBJETIVO")',1,$(date +%s),'consentimiento_expreso');" 2>/dev/null || true
+log_evento "CONSENTIMIENTO" "usuario=$USUARIO_OBJETIVO instalacion=v3.0"
+
 chown -R root:root "$BB_DIR"
+chmod 750 "$BB_DIR/etc" "$BB_DIR/logs"
+find "$BB_DIR/logs" -type d -exec chmod 750 {} +
+chmod 640 "$BB_DIR/etc/estado.db"
 
 echo ">> Generando efigies del Partido"
 if command -v convert >/dev/null 2>&1; then
@@ -117,12 +149,12 @@ cp "$REPO_DIR/systemd/bigbrother-propaganda.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now bigbrother.service bigbrother-propaganda.service
 
+echo ">> Comando del ciudadano"
+ln -sf "$BB_DIR/bin/bigbrother.sh" "$BIN_LINK"
+
 cat > /etc/profile.d/bigbrother-motd.sh <<'EOF'
 [[ $- == *i* ]] && echo "👁 GRAN HERMANO TE OBSERVA — Sistema de Control Totalitario activo"
 EOF
-
-echo "$(date +%s)|$(date +%Y-%m-%d)|CONSENTIMIENTO|usuario=$USUARIO_OBJETIVO instalacion=v2.0" \
-  >> "$BB_DIR/etc/registros.db"
 
 cat <<EOF
 

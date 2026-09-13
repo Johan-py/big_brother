@@ -2,13 +2,17 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+asegurar_dirs
+migrar_legado
+
 USUARIO=$(usuario_vigilado)
 
 indice_obediencia() {
-  local infracciones dias
-  infracciones=$(grep -cE '\|(CASTIGO_N[0-9]|VAPORIZACION)\|' "$REGISTROS_DB" 2>/dev/null || true)
-  infracciones=${infracciones:-0}
-  dias=$(grep -oE '^[0-9]+\|[0-9]{4}-[0-9]{2}-[0-9]{2}\|' "$REGISTROS_DB" 2>/dev/null | cut -d'|' -f2 | sort -u | wc -l)
+  local limite hace30 infracciones dias resultado
+  hace30=$(date -d "-30 days" +%F)
+  limite=$(( $(date +%s) - 30*86400 ))
+  infracciones=$(dbq "SELECT COUNT(*) FROM registros WHERE ts >= $limite AND (evento LIKE 'CASTIGO_N%' OR evento='VAPORIZACION');" 2>/dev/null || echo 0)
+  dias=$(dbq "SELECT COUNT(DISTINCT dia) FROM tiempo WHERE dia >= '$(sql_esc "$hace30")';" 2>/dev/null || echo 0)
   (( dias == 0 )) && dias=1
   local resultado=$(( 100 - (infracciones * 100) / (dias * 3) ))
   (( resultado < 0 )) && resultado=0
@@ -41,26 +45,25 @@ EOF
 }
 
 informe_diario() {
-  local fecha="${2:-$(hoy)}"
+  local fecha="${2:-$(hoy)}" total
   echo "=== INFORME DEL PARTIDO: $fecha ==="
-  grep "|$fecha|" "$REGISTROS_DB" 2>/dev/null | awk -F'|' \
-    '{ printf "[%s] %s %s\n", strftime("%H:%M", $1), $3, $4 }' || echo "Sin registros"
+  total=$(dbq "SELECT COUNT(*) FROM registros WHERE fecha='$(sql_esc "$fecha")';" 2>/dev/null || echo 0)
+  (( total > 0 )) || { echo "Sin registros"; return; }
+  dbq "SELECT ts,evento,detalle FROM registros WHERE fecha='$(sql_esc "$fecha")' ORDER BY ts;" 2>/dev/null \
+    | while IFS='|' read -r ts evento detalle; do
+        printf "[%s] %s %s\n" "$(date -d "@$ts" '+%H:%M')" "$evento" "$detalle"
+      done
 }
 
 solicitar_arrepentimiento() {
-  (
-    flock -x 9
-    if [[ -f "$SALIDA_DB" ]] && grep -q "SOLICITUD" "$SALIDA_DB"; then
-      :
-    else
-      echo "SOLICITUD|$(date +%s)" >> "$SALIDA_DB"
-    fi
-  ) 9>"$ETC_DIR/.lock.salida"
+  local ahora
+  ahora=$(date +%s)
+  db "INSERT INTO salida (tipo,ts) SELECT 'SOLICITUD',$ahora WHERE NOT EXISTS (SELECT 1 FROM salida WHERE tipo='SOLICITUD');" 2>/dev/null || true
 
   local horas solicitud_ts restante
-  horas=$(cfg REFLEXION_HORAS 24)
-  solicitud_ts=$(grep "SOLICITUD" "$SALIDA_DB" | tail -1 | cut -d'|' -f2)
-  restante=$(( solicitud_ts + horas * 3600 - $(date +%s) ))
+  horas=$(cfg_num REFLEXION_HORAS 24)
+  solicitud_ts=$(dbq "SELECT MAX(ts) FROM salida WHERE tipo='SOLICITUD';" 2>/dev/null || echo 0)
+  restante=$(( solicitud_ts + horas * 3600 - ahora ))
 
   if (( restante > 0 )); then
     echo "El Partido ha recibido tu solicitud de arrepentimiento."
@@ -100,7 +103,7 @@ case "${1:-}" in
     ;;
   *)
     cat <<EOF
-GRAN HERMANO v2.0 — Sistema de Control Ciudadano
+GRAN HERMANO v3.0 — Sistema de Control Ciudadano
 
 uso: bigbrother.sh <comando>
 
