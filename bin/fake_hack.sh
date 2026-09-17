@@ -16,7 +16,7 @@ hash_aleatorio() { printf '%08x%08x' $RANDOM$RANDOM $RANDOM$RANDOM; }
 jitter()        { awk -v min="$1" -v max="$2" 'BEGIN{srand(); printf "%.2f", min+rand()*(max-min)}'; }
 
 # Imprime línea completa de golpe (para logs rápidos)
-escribir() { printf '%b%s%b\n' "$1" "$2" "$C_N"; sleep "$3"; }
+escribir() { printf '%b%s%b\n' "$1" "$2" "$C_N"; sleep "${3:-0}"; }
 
 # Efecto "de máquina de escribir": imprime carácter por carácter
 tipear() {
@@ -81,7 +81,7 @@ escribir "$C_R" "    → 1337/tcp  ????      LISTENING ★" 0.4
 
 for paso in "Inyectando payload en el demonio de red" \
             "Saltando la sandbox del kernel" \
-            "Escalando privilegios (CVE-2026-XXXX simulado)" \
+            "Escalando privilegios (CVE-2024-XXXX simulado)" \
             "Descifrando tráfico cifrado AES-256" \
             "Secuestrando sesión activa" \
             "Pivotando a la red interna" \
@@ -103,10 +103,10 @@ tipear   "$C_Y" "[*] Exfiltrando datos inútiles de tu historial de shell..." 0.
 sleep 0.5
 
 echo
-escribir "$C_R$C_B" "┌──────────────────────────────────────────────┐"
-escribir "$C_R$C_B" "│          ACCESO NO AUTORIZADO                 │"
-escribir "$C_R$C_B" "│   Esto fue solo un recordatorio, estúpido.    │"
-escribir "$C_R$C_B" "└──────────────────────────────────────────────┘"
-escribir "$C_G" "    — fin de la simulación. Respira, aficionado." 0.5
+escribir "$C_R$C_B" "┌──────────────────────────────────────────────┐" 0.15
+escribir "$C_R$C_B" "│          ACCESO NO AUTORIZADO                 │" 0.15
+escribir "$C_R$C_B" "│   Esto fue solo un recordatorio, estúpido.    │" 0.15
+escribir "$C_R$C_B" "└──────────────────────────────────────────────┘" 0.15
+escribir "$C_G" "    — fin del esploit. Respira, aficionado." 0.5
 
 exit 0
