@@ -1,7 +1,9 @@
-LIMITE_DIARIO_MIN=180
-TIEMPO_EXTRA_MIN=60
-YOUTUBE_LIMITE_MIN=30
-PESO_YOUTUBE_SEG=60
-REFLEXION_HORAS=24
-PROPAGANDA_INTERVALO_MIN=7
-VAPORIZACION_HABILITADA=1
+# Umbral: cada cuántas horas de uso se dispara el flujo completo
+# (notificación IA -> terminal de Gilfoyle a los 10 s -> travesura a los 5 min)
+INTERVALO_HORAS=1
+
+# Directorio donde buscar música para la travesura "música aleatoria"
+MUSICA_DIR=/home/USUARIO/Music
+
+# Modelo de OpenRouter usado para generar los mensajes de Gilfoyle
+MODELO=deepseek/deepseek-chat

@@ -1,5 +1,5 @@
 [Unit]
-Description=Gran Hermano - Vigilancia de Ciudadanos
+Description=Gran Hermano - Vigilancia de tiempo de uso
 After=graphical.target
 
 [Service]

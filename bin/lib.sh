@@ -5,7 +5,6 @@ BB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="$BB_DIR/bin"
 ETC_DIR="$BB_DIR/etc"
 LOGS_DIR="$BB_DIR/logs"
-ASSETS_DIR="$BB_DIR/assets"
 if mkdir -p /run/bigbrother 2>/dev/null; then
   RUN_DIR="/run/bigbrother"
 else
@@ -17,21 +16,7 @@ CONFIG="$ETC_DIR/config.conf"
 USUARIOS_DB="$ETC_DIR/usuarios.db"
 REGISTROS_DB="$ETC_DIR/registros.db"
 TIEMPO_DB="$ETC_DIR/tiempo.db"
-CASTIGOS_DB="$ETC_DIR/castigos.db"
-EXILIO_DB="$ETC_DIR/exilio.db"
-SALIDA_DB="$ETC_DIR/salida.db"
 FRASE_FILE="$ETC_DIR/frase_liberacion"
-
-SLOGANS=(
-  "LA GUERRA ES LA PAZ"
-  "LA LIBERTAD ES LA ESCLAVITUD"
-  "LA IGNORANCIA ES LA FUERZA"
-  "EL GRAN HERMANO TE OBSERVA"
-  "EL PENSAMIENTO CRIMINAL NO PASA DESAPERCIBIDO"
-  "OBEDECE. EL PARTIDO PROTEGE."
-  "TUS ACTOS SON REGISTRADOS. TUS SUEÑOS TAMBIÉN."
-  "LA RESISTENCIA ES INÚTIL. RÍNDETE."
-)
 
 cfg() {
   local clave="$1" valor_def="${2:-}"
@@ -56,21 +41,6 @@ log_evento() {
     flock -x 9
     echo "$linea" >> "$REGISTROS_DB"
   ) 9>"$ETC_DIR/.lock.registros"
-}
-
-log_castigo() {
-  local nivel="$1" motivo="$2" detalle="${3:-}"
-  local dir
-  dir="$LOGS_DIR/castigos"
-  mkdir -p "$dir"
-  {
-    echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-    echo "NIVEL: $nivel"
-    echo "MOTIVO: $motivo"
-    echo "DETALLE: $detalle"
-    echo
-  } >> "$dir/registro.log"
-  log_evento "CASTIGO_N$nivel" "$motivo: $detalle"
 }
 
 sesion_grafica() {
@@ -122,27 +92,63 @@ notify_user() {
   run_as_user "$usuario" notify-send -u "$urgencia" -t 10000 "$titulo" "$mensaje" || true
 }
 
-notificar_slogan() {
-  local usuario="$1"
-  local slogan=${SLOGANS[$((RANDOM % ${#SLOGANS[@]}))]}
-  notify_user "$usuario" "👁 GRAN HERMANO" "$slogan"
-}
+_terminals=(
+  kitty konsole xfce4-terminal gnome-terminal alacritty wezterm xterm urxvt x-terminal-emulator
+)
 
-exilio_activo() {
-  [[ -f "$EXILIO_DB" ]] || return 1
-  local ahora fin
-  ahora=$(date +%s)
-  fin=$(tail -1 "$EXILIO_DB" 2>/dev/null | cut -d'|' -f2)
-  [[ -n "$fin" && "$fin" =~ ^[0-9]+$ ]] || return 1
-  (( ahora < fin )) && return 0
+detectar_terminal() {
+  local t
+  for t in "${_terminals[@]}"; do
+    if command -v "$t" >/dev/null 2>&1; then
+      echo "$t"
+      return 0
+    fi
+  done
   return 1
 }
 
-exilio_fin() {
-  tail -1 "$EXILIO_DB" 2>/dev/null | cut -d'|' -f2
-}
-
-asegurar_dirs() {
-  mkdir -p "$RUN_DIR" "$LOGS_DIR/vigilancia" "$LOGS_DIR/castigos" "$LOGS_DIR/vaporizaciones" "$ASSETS_DIR/propaganda"
-  touch "$REGISTROS_DB" "$TIEMPO_DB" "$CASTIGOS_DB" "$EXILIO_DB" "$SALIDA_DB"
+abrir_terminal_usuario() {
+  local usuario="$1"
+  shift
+  local fullscreen=0
+  if [[ "${1:-}" == "--fullscreen" ]]; then
+    fullscreen=1
+    shift
+  fi
+  local term
+  term=$(detectar_terminal) || return 1
+  case "$term" in
+    kitty)
+      run_as_user "$usuario" kitty -e "$@" ;;
+    konsole)
+      if (( fullscreen )); then
+        run_as_user "$usuario" konsole --noclose --fullscreen -e "$@" 
+      else
+        run_as_user "$usuario" konsole --noclose -e "$@"
+      fi ;;
+    xfce4-terminal)
+      if (( fullscreen )); then
+        run_as_user "$usuario" xfce4-terminal --hold --fullscreen -x "$@"
+      else
+        run_as_user "$usuario" xfce4-terminal --hold -x "$@"
+      fi ;;
+    gnome-terminal)
+      run_as_user "$usuario" gnome-terminal -- "$@" ;;
+    alacritty)
+      run_as_user "$usuario" alacritty -e "$@" ;;
+    wezterm)
+      run_as_user "$usuario" wezterm start -- "$@" ;;
+    xterm)
+      if (( fullscreen )); then
+        run_as_user "$usuario" xterm -fullscreen -e "$@"
+      else
+        run_as_user "$usuario" xterm -e "$@"
+      fi ;;
+    urxvt)
+      run_as_user "$usuario" urxvt -e "$@" ;;
+    x-terminal-emulator)
+      run_as_user "$usuario" x-terminal-emulator -e "$@" ;;
+    *)
+      return 1 ;;
+  esac
 }

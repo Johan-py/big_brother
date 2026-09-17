@@ -14,8 +14,6 @@ verificar_frase() {
   frase_real=$(cat "$FRASE_FILE")
   if [[ "$intento" != "$frase_real" ]]; then
     echo "FRASE INCORRECTA. El pensamiento criminal persiste en ti."
-    echo "Tienes 3 segundos para reflexionar antes del siguiente castigo."
-    sleep 3
     USUARIO=$(awk -F'|' '{print $1}' "$BB_DIR/etc/usuarios.db" | head -1)
     if [[ -n "$USUARIO" ]]; then
       sudo -u "$USUARIO" notify-send -u critical "👁 GRAN HERMANO" \
@@ -27,21 +25,16 @@ verificar_frase() {
 
 liberar() {
   echo ">> Disolviendo la vigilancia..."
-  systemctl disable --now bigbrother.service bigbrother-propaganda.service 2>/dev/null || true
+  systemctl disable --now bigbrother.service 2>/dev/null || true
+  systemctl disable --now bigbrother-propaganda.service 2>/dev/null || true
   systemctl daemon-reload 2>/dev/null || true
 
   echo 0 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true
-
-  if [[ -f "$BB_DIR/etc/issue.original" ]]; then
-    cp "$BB_DIR/etc/issue.original" /etc/issue 2>/dev/null || true
-  fi
-
-  rm -f /etc/profile.d/bigbrother-motd.sh
   rm -f /etc/systemd/system/bigbrother.service /etc/systemd/system/bigbrother-propaganda.service
+  rm -f /etc/profile.d/bigbrother-motd.sh
 
   pkill -f "$BB_DIR/bin/surveillance.sh" 2>/dev/null || true
-  pkill -f "$BB_DIR/bin/propaganda.sh" 2>/dev/null || true
-  pkill -u "$(awk -F'|' '{print $1}' "$BB_DIR/etc/usuarios.db" | head -1)" -f "feh -F" 2>/dev/null || true
+  pkill -f "$BB_DIR/bin/travesuras.sh" 2>/dev/null || true
 
   cd /
   rm -rf "$BB_DIR"
@@ -51,7 +44,7 @@ liberar() {
 ╔════════════════════════════════════════════════════════════╗
 ║              HAS SIDO LIBERADO, CIUDADANO                  ║
 ╠════════════════════════════════════════════════════════════╣
-║  El Partido niega haber existido.                          ║
+║  El Gran Hermano niega haber existido.                     ║
 ║  Todos los registros han sido vaporizados.                 ║
 ║  Pero el Gran Hermano... el Gran Hermano nunca olvida.     ║
 ╚════════════════════════════════════════════════════════════╝
@@ -60,7 +53,7 @@ EOF
 
 case "${1:-}" in
   emergencia)
-    echo "PROTOCOLO DE EMERGENCIA: salida inmediata sin período de reflexión."
+    echo "PROTOCOLO DE EMERGENCIA: salida inmediata."
     verificar_frase
     liberar
     ;;
@@ -70,6 +63,5 @@ case "${1:-}" in
   *)
     echo "uso: desinstalar.sh {emergencia|ejecutar}"
     echo "  emergencia: salida inmediata (requiere frase de liberación)"
-    echo "  ejecutar:   usado internamente tras el período de arrepentimiento"
     ;;
 esac

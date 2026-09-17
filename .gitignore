@@ -3,5 +3,8 @@ etc/*.db
 etc/frase_liberacion
 etc/.lock*
 etc/.tiempo*
+.env
+__pycache__/
+respuestas_ia.json
 logs/**/*
 !logs/**/.gitkeep
